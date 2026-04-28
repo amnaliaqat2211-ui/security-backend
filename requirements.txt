@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+requests
+python-multipart
+twilio
+python-dotenv
+passlib[bcrypt]
+pymongo
