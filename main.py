@@ -6,9 +6,9 @@ from fastapi import FastAPI,UploadFile,File
 from fastapi import HTTPException
 from twilio.rest import Client
 from datetime import datetime
-from dotenv import load_dotenv
+
 import os
-load_dotenv()
+
 print("DATABASE_URL:", os.getenv("DATABASE_URL"))
 import time
 import asyncio
@@ -30,8 +30,18 @@ API_KEY=os.getenv("API_KEY")
 import re
 VT_API_KEY = os.getenv("VT_API_KEY")
 from pymongo import MongoClient
-client = MongoClient(os.getenv("DATABASE_URL"))
+import os
+
+db_url = os.getenv("DATABASE_URL")
+
+if not db_url:
+    raise Exception("❌ DATABASE_URL NOT FOUND")
+
+print("✅ DATABASE CONNECTING TO:", db_url[:30])  # debug (safe partial print)
+
+client = MongoClient(db_url)
 db = client["security_app"]
+
 users_collection = db["users"]
 sos_collection = db["sos_history"]
 
