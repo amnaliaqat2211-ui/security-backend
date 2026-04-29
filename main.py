@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
+from pydantic import BaseModel, EmailStr, Field
 from fastapi import FastAPI,UploadFile,File
 from fastapi import HTTPException
 from twilio.rest import Client
@@ -58,12 +59,11 @@ def hash_password(password):
 def verify_password(plain, hashed):
     return pwd_context.verify(plain, hashed)
 # ===================== MODELS =====================
-
 class RegisterRequest(BaseModel):
-    username: str
-    email: str
-    password: str
-    contacts: List[str] = []
+    username: str = Field(..., min_length=3, max_length=20)
+    email: EmailStr
+    password: str = Field(..., min_length=6)
+    contacts: List[str]
     sos_message: str = "Help me!"
 
 class LoginRequest(BaseModel):
