@@ -190,39 +190,28 @@ def register(data: RegisterRequest):
 @app.post("/login")
 def login(data: LoginRequest):
     try:
-        print("Incoming request:", data)
-
         user = users_collection.find_one({"email": data.email})
-        print("User from DB:", user)
 
         if not user:
             return {"message": "User not found"}
 
-        if "password" not in user:
-            return {"message": "Password field missing in DB"}
-
-        # ✅ SIMPLE PASSWORD CHECK (for now)
-        if data.password == user["password"]:
-            
-            # ✅ CREATE JWT TOKEN
-            access_token = create_access_token({"sub": user["email"]})
-
-            return {
-                "message": "Login successful",
-                "access_token": access_token,
-                "token_type": "bearer",
-                "username": user.get("username"),
-                "email": user.get("email"),
-                "contacts": user.get("contacts", []),
-                "sos_message": user.get("sos_message", "")
-            }
-
-        else:
+        # ✅ USE bcrypt verify here
+        if not verify_password(data.password, user["password"]):
             return {"message": "Invalid password"}
+
+        return {
+            "message": "Login successful",
+            "username": user.get("username"),
+            "email": user.get("email"),
+            "contacts": user.get("contacts", []),
+            "sos_message": user.get("sos_message", "")
+        }
 
     except Exception as e:
         print("🔥 LOGIN ERROR:", str(e))
         return {"detail": str(e)}
+
+        
 
 
 # ===================== UPDATE PROFILE =====================
