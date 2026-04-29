@@ -7,7 +7,17 @@ from fastapi import HTTPException
 from twilio.rest import Client
 from typing import List
 from passlib.context import CryptContext
-from datetime import datetime
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
+SECRET_KEY = "your_secret_key_123"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
+# ✅ ADD FUNCTION HERE
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 import os
 print("DATABASE_URL:", os.getenv("DATABASE_URL"))
 import time
@@ -180,24 +190,38 @@ def register(data: RegisterRequest):
 @app.post("/login")
 def login(data: LoginRequest):
     try:
+        print("Incoming request:", data)
+
         user = users_collection.find_one({"email": data.email})
+        print("User from DB:", user)
 
         if not user:
             return {"message": "User not found"}
 
-        # ✅ SIMPLE FIX HERE
+        if "password" not in user:
+            return {"message": "Password field missing in DB"}
+
+        # ✅ SIMPLE PASSWORD CHECK (for now)
         if data.password == user["password"]:
+            
+            # ✅ CREATE JWT TOKEN
+            access_token = create_access_token({"sub": user["email"]})
+
             return {
                 "message": "Login successful",
+                "access_token": access_token,
+                "token_type": "bearer",
                 "username": user.get("username"),
                 "email": user.get("email"),
                 "contacts": user.get("contacts", []),
                 "sos_message": user.get("sos_message", "")
             }
+
         else:
             return {"message": "Invalid password"}
 
     except Exception as e:
+        print("🔥 LOGIN ERROR:", str(e))
         return {"detail": str(e)}
 
 
