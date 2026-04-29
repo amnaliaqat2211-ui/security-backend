@@ -589,29 +589,37 @@ async def scan_url(data: URLRequest):
 @app.post("/scan-file")
 async def scan_file(file: UploadFile = File(...)):
     try:
+        print("API KEY:", VT_API_KEY)
+        print("FILE:", file.filename)
+
         headers = {"x-apikey": VT_API_KEY}
 
         file_bytes = await file.read()
 
+        if not file_bytes:
+            return {"status": "error", "message": "Empty file"}
+
+        # ✅ FIXED FILE FORMAT
         files = {
-            "file": (file.filename, file_bytes)
+            "file": (file.filename, file_bytes, "application/octet-stream")
         }
 
-        # 🔥 STEP 1: Upload file
+        # STEP 1: Upload
         upload = requests.post(
             "https://www.virustotal.com/api/v3/files",
             headers=headers,
             files=files
         )
-        print("Upload response", upload.text)
+
+        print("Upload response:", upload.text)
 
         if upload.status_code != 200:
             return {"status": "error", "message": "Upload failed"}
 
         analysis_id = upload.json()["data"]["id"]
 
-        # 🔥 STEP 2: Poll for result (SMART LOOP)
-        for i in range(15):   # max ~30 seconds
+        # STEP 2: Poll
+        for _ in range(15):
             await asyncio.sleep(2)
 
             analysis = requests.get(
@@ -621,7 +629,6 @@ async def scan_file(file: UploadFile = File(...)):
 
             result_data = analysis.json()["data"]["attributes"]
 
-            # ✅ CHECK IF READY
             if result_data["status"] == "completed":
                 stats = result_data["stats"]
 
@@ -646,14 +653,19 @@ async def scan_file(file: UploadFile = File(...)):
                         "details": stats
                     }
 
-        # ⛔ IF NOT READY AFTER WAIT
         return {
             "status": "processing",
             "message": "Still analyzing, try again"
         }
 
     except Exception as e:
+        print("ERROR:", str(e))
         return {"status": "error", "message": str(e)}
+
+       
+      
+
+                    
 
         
         
