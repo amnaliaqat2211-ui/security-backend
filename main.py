@@ -39,7 +39,6 @@ client = MongoClient(db_url)
 db = client["security_app"]
 users_collection = db["users"]
 sos_collection = db["sos_history"]
-
 # ===================== SECURITY =====================
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -180,19 +179,35 @@ def register(data: RegisterRequest):
 
 @app.post("/login")
 def login(data: LoginRequest):
+    try:
+        print("Incoming request:", data)
 
-    user = users_collection.find_one({"email": data.email})
+        user = users_collection.find_one({"email": data.email})
+        print("User from DB:", user)
 
-    if user and verify_password(data.password, user["password"]):
-        return {
-            "message": "Login successful",
-            "username": user.get("username"),
-            "email": user.get("email"),
-            "contacts": user.get("contacts", []),
-            "sos_message": user.get("sos_message", "")
-        }
-    else:
-        return {"message": "Invalid email or password"}
+        if not user:
+            return {"message": "User not found"}
+
+        if "password" not in user:
+            return {"message": "Password field missing in DB"}
+
+        result = verify_password(data.password, user["password"])
+        print("Password match:", result)
+
+        if result:
+            return {
+                "message": "Login successful",
+                "username": user.get("username"),
+                "email": user.get("email"),
+                "contacts": user.get("contacts", []),
+                "sos_message": user.get("sos_message", "")
+            }
+        else:
+            return {"message": "Invalid password"}
+
+    except Exception as e:
+        print("🔥 LOGIN ERROR:", str(e))
+        return {"detail": str(e)}
 
 # ===================== UPDATE PROFILE =====================
 
