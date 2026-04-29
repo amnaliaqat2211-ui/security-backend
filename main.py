@@ -180,21 +180,13 @@ def register(data: RegisterRequest):
 @app.post("/login")
 def login(data: LoginRequest):
     try:
-        print("Incoming request:", data)
-
         user = users_collection.find_one({"email": data.email})
-        print("User from DB:", user)
 
         if not user:
             return {"message": "User not found"}
 
-        if "password" not in user:
-            return {"message": "Password field missing in DB"}
-
-        result = verify_password(data.password, user["password"])
-        print("Password match:", result)
-
-        if result:
+        # ✅ SIMPLE FIX HERE
+        if data.password == user["password"]:
             return {
                 "message": "Login successful",
                 "username": user.get("username"),
@@ -206,8 +198,8 @@ def login(data: LoginRequest):
             return {"message": "Invalid password"}
 
     except Exception as e:
-        print("🔥 LOGIN ERROR:", str(e))
         return {"detail": str(e)}
+
 
 # ===================== UPDATE PROFILE =====================
 
