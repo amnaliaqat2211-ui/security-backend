@@ -555,7 +555,7 @@ async def chat(req: ChatRequest):
 @app.post("/scan-url")
 async def scan_url(data: URLRequest):
 
-    headers = {"x-apikey": VT_API_KEY}
+    headers = {"x-apikey": VT_API_KEY.strip()}
 
     # Submit URL
     res = requests.post(
@@ -590,10 +590,10 @@ async def scan_url(data: URLRequest):
 @app.post("/scan-file")
 async def scan_file(file: UploadFile = File(...)):
     try:
-        print("API KEY:", VT_API_KEY)
+        print("API KEY:", VT_API_KEY.strip())
         print("FILE:", file.filename)
 
-        headers = {"x-apikey": VT_API_KEY}
+        headers = {"x-apikey": VT_API_KEY.strip()}
 
         file_bytes = await file.read()
 
