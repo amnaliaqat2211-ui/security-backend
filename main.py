@@ -590,9 +590,6 @@ async def scan_url(data: URLRequest):
 @app.post("/scan-file")
 async def scan_file(file: UploadFile = File(...)):
     try:
-        print("API KEY:", VT_API_KEY.strip())
-        print("FILE:", file.filename)
-
         headers = {"x-apikey": VT_API_KEY.strip()}
 
         file_bytes = await file.read()
@@ -604,27 +601,25 @@ async def scan_file(file: UploadFile = File(...)):
             "file": (file.filename, file_bytes, "application/octet-stream")
         }
 
-        # STEP 1: Upload
+        # ✅ STEP 1: Upload only
         upload = requests.post(
             "https://www.virustotal.com/api/v3/files",
             headers=headers,
             files=files
         )
 
-        print("Upload response:", upload.text)
+        print("UPLOAD RESPONSE:", upload.text)
 
-        # ❌ HANDLE ERROR PROPERLY
+        # ❌ HANDLE ERROR
         if upload.status_code != 200:
             error_text = upload.text.lower()
 
             if "rate limit" in error_text:
                 message = "API limit reached. Try again in a few seconds."
             elif "size" in error_text:
-                message = "File too large to scan."
-            elif "unsupported" in error_text:
-                message = "File type not supported."
+                message = "File too large."
             else:
-                message = "Scan failed due to external API limitation."
+                message = "Upload failed due to API limitation."
 
             return {
                 "status": "ERROR",
@@ -632,54 +627,50 @@ async def scan_file(file: UploadFile = File(...)):
                 "message": message
             }
 
+        # ✅ IMPORTANT: RETURN analysis_id
         analysis_id = upload.json()["data"]["id"]
 
-        # STEP 2: Poll
-        for _ in range(15):
-            await asyncio.sleep(2)
-
-            analysis = requests.get(
-                f"https://www.virustotal.com/api/v3/analyses/{analysis_id}",
-                headers=headers
-            )
-
-            result_data = analysis.json()["data"]["attributes"]
-
-            if result_data["status"] == "completed":
-                stats = result_data["stats"]
-
-                if stats["malicious"] > 0:
-                    return {
-                        "status": "MALICIOUS",
-                        "filename": file.filename,
-                        "details": stats
-                    }
-
-                elif stats["suspicious"] > 0:
-                    return {
-                        "status": "SUSPICIOUS",
-                        "filename": file.filename,
-                        "details": stats
-                    }
-
-                else:
-                    return {
-                        "status": "SAFE",
-                        "filename": file.filename,
-                        "details": stats
-                    }
-
-        # ⏳ if still not ready
         return {
             "status": "PROCESSING",
-            "message": "Still analyzing, try again"
+            "analysis_id": analysis_id,
+            "filename": file.filename
         }
 
     except Exception as e:
+        print("SCAN ERROR:", e)
         return {
-    "status": "ERROR",
-    "filename": file.filename,
-    "message": "Something went wrong during scanning. Please try again."
-}
+            "status": "ERROR",
+            "filename": file.filename,
+            "message": "Something went wrong"
+        }
+
+        # ✅ 2. ADD THIS BELOW scan_file FUNCTION
+
+@app.get("/check-status/{analysis_id}")
+async def check_status(analysis_id: str):
+    headers = {"x-apikey": VT_API_KEY.strip()}
+
+    res = requests.get(
+        f"https://www.virustotal.com/api/v3/analyses/{analysis_id}",
+        headers=headers
+    )
+
+    data = res.json()["data"]["attributes"]
+
+    if data["status"] != "completed":
+        return {"status": "PROCESSING"}
+
+    stats = data["stats"]
+
+    if stats["malicious"] > 0:
+        return {"status": "MALICIOUS", "details": stats}
+    elif stats["suspicious"] > 0:
+        return {"status": "SUSPICIOUS", "details": stats}
+    else:
+        return {"status": "SAFE", "details": stats}
+
+            
+
+             
 
     
