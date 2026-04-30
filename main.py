@@ -598,9 +598,8 @@ async def scan_file(file: UploadFile = File(...)):
         file_bytes = await file.read()
 
         if not file_bytes:
-            return {"status": "error", "message": "Empty file"}
+            return {"status": "ERROR", "message": "Empty file"}
 
-        # ✅ FIXED FILE FORMAT
         files = {
             "file": (file.filename, file_bytes, "application/octet-stream")
         }
@@ -614,8 +613,24 @@ async def scan_file(file: UploadFile = File(...)):
 
         print("Upload response:", upload.text)
 
+        # ❌ HANDLE ERROR PROPERLY
         if upload.status_code != 200:
-            return {"status": "error", "message": "Upload failed"}
+            error_text = upload.text.lower()
+
+            if "rate limit" in error_text:
+                message = "API limit reached. Try again in a few seconds."
+            elif "size" in error_text:
+                message = "File too large to scan."
+            elif "unsupported" in error_text:
+                message = "File type not supported."
+            else:
+                message = "Scan failed due to external API limitation."
+
+            return {
+                "status": "ERROR",
+                "filename": file.filename,
+                "message": message
+            }
 
         analysis_id = upload.json()["data"]["id"]
 
@@ -654,18 +669,17 @@ async def scan_file(file: UploadFile = File(...)):
                         "details": stats
                     }
 
+        # ⏳ if still not ready
         return {
-            "status": "processing",
+            "status": "PROCESSING",
             "message": "Still analyzing, try again"
-    
         }
+
     except Exception as e:
-     return JSONResponse(
-        status_code=500,
-        content={"status": "error", "message": str(e)}
-    )
+        return {
+    "status": "ERROR",
+    "filename": file.filename,
+    "message": "Something went wrong during scanning. Please try again."
+}
 
-       
-      
-
-        
+    
