@@ -23,6 +23,7 @@ def create_access_token(data: dict):
 import os
 print("DATABASE_URL:", os.getenv("DATABASE_URL"))
 import time
+last_request_time = 0
 import asyncio
 import requests
 app = FastAPI()
@@ -589,6 +590,18 @@ async def scan_url(data: URLRequest):
 # =======================
 @app.post("/scan-file")
 async def scan_file(file: UploadFile = File(...)):
+    global last_request_time
+
+    current_time = time.time()
+
+    # ⛔ prevent too fast requests
+    if current_time - last_request_time < 10:
+        return {
+            "status": "ERROR",
+            "message": "Please wait before scanning next file"
+        }
+    last_request_time = current_time
+
     try:
         headers = {"x-apikey": VT_API_KEY.strip()}
 
