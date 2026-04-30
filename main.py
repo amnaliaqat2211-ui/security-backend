@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field
 from fastapi import FastAPI,UploadFile,File
 from fastapi import HTTPException
@@ -656,21 +657,15 @@ async def scan_file(file: UploadFile = File(...)):
         return {
             "status": "processing",
             "message": "Still analyzing, try again"
+    
         }
-
     except Exception as e:
-        print("ERROR:", str(e))
-        return {"status": "error", "message": str(e)}
+     return JSONResponse(
+        status_code=500,
+        content={"status": "error", "message": str(e)}
+    )
 
        
       
 
-                    
-
         
-        
-         
-
-
- 
-    
