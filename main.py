@@ -448,22 +448,16 @@ def get_confidence(score):
 
 
 # ================= CHAT API =================
-
 @app.post("/chat")
 async def chat(req: ChatRequest):
 
     # ✅ ALWAYS DEFINE MESSAGE FIRST
     message = req.message.strip()
-
-    # 🧠 Debug (optional but good for viva)
     print("User:", message)
 
     # ================== 1. ANALYSIS ==================
     level, reasons, score = analyze_message(message)
     confidence = get_confidence(score)
-
-    print("Risk Level:", level)
-    print("Reasons:", reasons)
 
     if level == "HIGH":
         return {
@@ -498,19 +492,15 @@ async def chat(req: ChatRequest):
 
     # ================== 4. WIKIPEDIA ==================
     wiki_result = get_wikipedia_summary(message)
-
     if wiki_result:
         return {
-            "reply": (
-                "📚 Based on available information:\n\n"
-                + wiki_result
-            )
+            "reply": "📚 Based on available information:\n\n" + wiki_result
         }
 
     # ================== 5. AI FALLBACK ==================
     try:
         response = requests.post(
-            url="https://openrouter.ai/api/v1/chat/completions",
+            "https://openrouter.ai/api/v1/chat/completions",
             headers={
                 "Authorization": f"Bearer {API_KEY}",
                 "Content-Type": "application/json"
@@ -520,11 +510,7 @@ async def chat(req: ChatRequest):
                 "messages": [
                     {
                         "role": "system",
-                        "content": (
-                            "You are a helpful assistant. "
-                            "If you are unsure about current facts, say you are not sure. "
-                            "Do NOT give outdated or incorrect information."
-                        )
+                        "content": "You are a helpful AI Security Assistant."
                     },
                     {
                         "role": "user",
@@ -535,20 +521,19 @@ async def chat(req: ChatRequest):
         )
 
         result = response.json()
+        print("OPENROUTER RESPONSE:", result)
 
+        # ❗ show real error if API fails
         if "choices" not in result:
-            return {"reply": "⚠️ Something went wrong."}
+            return {"reply": f"⚠️ API Error: {result}"}
 
         return {
-            "reply": "🤖 " + result["choices"][0]["message"]["content"]
+            "reply": result["choices"][0]["message"]["content"]
         }
 
     except Exception as e:
-        print("Error:", e)
-        return {"reply": "⚠️ Server error"}
- 
-
-
+        print("CHAT ERROR:", e)
+        return {"reply": f"⚠️ Server Error: {str(e)}"}
 
 # =======================
 # 2. SCAN URL
@@ -681,9 +666,3 @@ async def check_status(analysis_id: str):
         return {"status": "SUSPICIOUS", "details": stats}
     else:
         return {"status": "SAFE", "details": stats}
-
-            
-
-             
-
-    
