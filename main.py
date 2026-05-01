@@ -5,6 +5,7 @@ from typing import List
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field
 from fastapi import FastAPI,UploadFile,File
+import shutil
 from fastapi import HTTPException
 from twilio.rest import Client
 from typing import List
@@ -666,3 +667,14 @@ async def check_status(analysis_id: str):
         return {"status": "SUSPICIOUS", "details": stats}
     else:
         return {"status": "SAFE", "details": stats}
+@app.post("/speech-to-text")
+async def speech_to_text(file: UploadFile = File(...)):
+    
+    # Save audio file
+    with open("audio.wav", "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # 🔥 TEMPORARY (for testing)
+    return {
+        "text": "Hello from backend (dummy response)"
+    }
