@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
+import os
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field
 from fastapi import FastAPI,UploadFile,File
@@ -22,14 +23,13 @@ def create_access_token(data: dict):
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-import os
+
 print("DATABASE_URL:", os.getenv("DATABASE_URL"))
 import time
 last_request_time = 0
 import asyncio
 import requests
 app = FastAPI()
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # allow all (for development)
