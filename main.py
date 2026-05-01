@@ -6,14 +6,14 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field
 from fastapi import FastAPI,UploadFile,File
 import shutil
-
-from fastapi import HTTPException
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from twilio.rest import Client
 from typing import List
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
-SECRET_KEY = "your_secret_key_123"
+SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 # ✅ ADD FUNCTION HERE
@@ -189,27 +189,39 @@ def register(data: RegisterRequest):
     })
 
     return {"message": "User registered successfully"}
-
-# ===================== LOGIN =====================
-
+# ==========================
+# 🔐 LOGIN API
+# ==========================
 @app.post("/login")
 def login(data: LoginRequest):
     try:
+        # 🔍 FIND USER
         user = users_collection.find_one({"email": data.email})
 
         if not user:
             return {"message": "User not found"}
 
-        # ✅ USE bcrypt verify here
+        # 🔑 VERIFY PASSWORD
         if not verify_password(data.password, user["password"]):
             return {"message": "Invalid password"}
 
+        # 🔐 CREATE TOKEN
+        token_data = {
+            "username": user.get("username"),
+            "email": user.get("email"),
+            "exp": datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        }
+
+        access_token = jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
+
+        # ✅ FINAL RESPONSE
         return {
             "message": "Login successful",
             "username": user.get("username"),
             "email": user.get("email"),
             "contacts": user.get("contacts", []),
-            "sos_message": user.get("sos_message", "")
+            "sos_message": user.get("sos_message", ""),
+            "access_token": access_token   # 🔥 IMPORTANT
         }
 
     except Exception as e:
@@ -679,4 +691,26 @@ async def speech_to_text(file: UploadFile = File(...)):
     # 🔥 TEMPORARY (for testing)
     return {
         "text": "Hello from backend (dummy response)"
+    }
+security = HTTPBearer()
+
+SECRET_KEY = "your_secret_key_here"
+ALGORITHM = "HS256"
+
+# 🔐 Decode token
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+
+# ✅ PROFILE API
+@app.get("/profile")
+def get_profile(user=Depends(get_current_user)):
+    return {
+        "username": user.get("username"),
+        "email": user.get("email")
     }
