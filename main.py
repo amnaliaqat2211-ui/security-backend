@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field
 from fastapi import FastAPI,UploadFile,File
 import shutil
-import whisper
+
 from fastapi import HTTPException
 from twilio.rest import Client
 from typing import List
@@ -29,7 +29,7 @@ last_request_time = 0
 import asyncio
 import requests
 app = FastAPI()
-model = whisper.load_model("base")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # allow all (for development)
@@ -671,19 +671,12 @@ async def check_status(analysis_id: str):
         return {"status": "SAFE", "details": stats}
 @app.post("/speech-to-text")
 async def speech_to_text(file: UploadFile = File(...)):
-
-    file_path = "audio.wav"
-
-    # Save file
-    with open(file_path, "wb") as buffer:
+    
+    # Save audio file
+    with open("audio.wav", "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # 🔥 TRANSCRIBE
-    result = model.transcribe(file_path)
-
+    # 🔥 TEMPORARY (for testing)
     return {
-        "text": result["text"]
+        "text": "Hello from backend (dummy response)"
     }
-    
-   
-    
