@@ -68,7 +68,7 @@ class RegisterRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=20)
     email: EmailStr
     password: str = Field(..., min_length=6)
-    contacts: List[str]
+    contacts: List[Contact]
     sos_message: str = "Help me!"
 
 class LoginRequest(BaseModel):
@@ -79,9 +79,15 @@ class UpdateProfileRequest(BaseModel):
     email: str
     username: str
 
-class ContactRequest(BaseModel):
-    email: str
-    contact: str
+class Contact(BaseModel):
+    name: str
+    phone:str
+class DeleteContact(BaseModel):
+    phone: str
+class UpdateContact(BaseModel):
+    old_phone: str
+    name: str
+    phone: str
 
 class SOSRequest(BaseModel):
    latitude: float
@@ -246,35 +252,6 @@ def update_profile(data: UpdateProfileRequest):
     else:
         return {"message": "User not found"}
 
-# ===================== ADD CONTACT =====================
-
-@app.post("/add-contact")
-def add_contact(data: ContactRequest):
-
-    result = users_collection.update_one(
-        {"email": data.email},
-        {"$push": {"contacts": data.contact}}
-    )
-
-    if result.modified_count > 0:
-        return {"message": "Contact added"}
-    else:
-        return {"message": "User not found"}
-
-# ===================== DELETE CONTACT =====================
-
-@app.post("/delete-contact")
-def delete_contact(data: ContactRequest):
-
-    result = users_collection.update_one(
-        {"email": data.email},
-        {"$pull": {"contacts": data.contact}}
-    )
-
-    if result.modified_count > 0:
-        return {"message": "Contact deleted"}
-    else:
-        return {"message": "User not found"}
 
 # ===================== UPDATE SOS =====================
 
@@ -286,6 +263,8 @@ def send_sos(data: SOSRequest):
     # 🔥 GET USER CONTACTS FROM DATABASE
     user_data = users_collection.find_one({"email": data.email})
     contacts = user_data.get("contacts", [])
+    if not user_data:
+     return {"contacts": []}
 
     # ✅ SAVE SOS HISTORY
     sos_collection.insert_one({
@@ -699,9 +678,6 @@ async def speech_to_text(file: UploadFile = File(...)):
     }
 security = HTTPBearer()
 
-SECRET_KEY = "your_secret_key_here"
-ALGORITHM = "HS256"
-
 # 🔐 Decode token
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
@@ -720,34 +696,38 @@ def get_profile(user=Depends(get_current_user)):
         "email": user.get("email")
     }
 @app.post("/add-contact")
-def add_contact(contact: dict, user=Depends(get_current_user)):
+def add_contact(contact: Contact, user=Depends(get_current_user)):
     users_collection.update_one(
         {"email": user["email"]},
-        {"$push": {"contacts": contact}}
+        {"$push": {"contacts": contact.dict()}}
     )
     return {"message": "Contact added"}
 @app.get("/contacts")
 def get_contacts(user=Depends(get_current_user)):
     user_data = users_collection.find_one({"email": user["email"]})
     return {"contacts": user_data.get("contacts", [])}
+
+
 @app.post("/delete-contact")
-def delete_contact(data: dict, user=Depends(get_current_user)):
+def delete_contact(data: DeleteContact, user=Depends(get_current_user)):
     users_collection.update_one(
         {"email": user["email"]},
-        {"$pull": {"contacts": {"phone": data["phone"]}}}
+        {"$pull": {"contacts": {"phone": data.phone}}}
     )
     return {"message": "Deleted"}
+
+
 @app.post("/update-contact")
-def update_contact(data: dict, user=Depends(get_current_user)):
+def update_contact(data: UpdateContact, user=Depends(get_current_user)):
     users_collection.update_one(
         {
             "email": user["email"],
-            "contacts.phone": data["old_phone"]
+            "contacts.phone": data.old_phone
         },
         {
             "$set": {
-                "contacts.$.name": data["name"],
-                "contacts.$.phone": data["phone"]
+                "contacts.$.name": data.name,
+                "contacts.$.phone": data.phone
             }
         }
     )
