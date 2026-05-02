@@ -37,8 +37,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-account_sid = os.getenv("TWILIO_SID")
-auth_token = os.getenv("TWILIO_TOKEN")
+account_sid = os.getenv("TWILIO_ACCOUT_SID")
+auth_token = os.getenv("TWILIO_AUTH_TOKEN")
 twilio_number =os.getenv ("TWILIO_NUMBER")
 receiver_number =os.getenv("RECIEVER_NUMBER")
 twilio_client = Client(account_sid, auth_token)
@@ -87,7 +87,7 @@ class SOSRequest(BaseModel):
    latitude: float
    longitude: float
    message: str
-   contacts: List[str]
+   email:str
 
 class ChatRequest(BaseModel):
     message: str
@@ -283,12 +283,16 @@ def send_sos(data: SOSRequest):
     print("🚨 SOS TRIGGERED")
     print("Location:", data.latitude, data.longitude)
 
+    # 🔥 GET USER CONTACTS FROM DATABASE
+    user_data = users_collection.find_one({"email": data.email})
+    contacts = user_data.get("contacts", [])
+
     # ✅ SAVE SOS HISTORY
     sos_collection.insert_one({
         "latitude": data.latitude,
         "longitude": data.longitude,
         "message": data.message,
-        "contacts": data.contacts,
+        "contacts": contacts,
         "time": datetime.now()
     })
 
@@ -307,8 +311,9 @@ Message:
 {data.message}
 """
 
-    # 🔥 LOOP THROUGH CONTACTS
-    for number in data.contacts:
+    # 🔥 LOOP THROUGH CONTACTS (FROM DB NOW)
+    for contact in contacts:
+        number = contact["phone"]
         try:
             twilio_client.messages.create(
                 body=sms_body,
@@ -319,8 +324,8 @@ Message:
         except Exception as e:
             print(f"Failed for {number}: {e}")
 
-    # ✅ RETURN MUST BE INSIDE FUNCTION
     return {"status": "SOS sent to all contacts"}
+        
 
  
 # ===================== GET PROFILE =====================
@@ -714,3 +719,36 @@ def get_profile(user=Depends(get_current_user)):
         "username": user.get("username"),
         "email": user.get("email")
     }
+@app.post("/add-contact")
+def add_contact(contact: dict, user=Depends(get_current_user)):
+    users_collection.update_one(
+        {"email": user["email"]},
+        {"$push": {"contacts": contact}}
+    )
+    return {"message": "Contact added"}
+@app.get("/contacts")
+def get_contacts(user=Depends(get_current_user)):
+    user_data = users_collection.find_one({"email": user["email"]})
+    return {"contacts": user_data.get("contacts", [])}
+@app.post("/delete-contact")
+def delete_contact(data: dict, user=Depends(get_current_user)):
+    users_collection.update_one(
+        {"email": user["email"]},
+        {"$pull": {"contacts": {"phone": data["phone"]}}}
+    )
+    return {"message": "Deleted"}
+@app.post("/update-contact")
+def update_contact(data: dict, user=Depends(get_current_user)):
+    users_collection.update_one(
+        {
+            "email": user["email"],
+            "contacts.phone": data["old_phone"]
+        },
+        {
+            "$set": {
+                "contacts.$.name": data["name"],
+                "contacts.$.phone": data["phone"]
+            }
+        }
+    )
+    return {"message": "Updated"}
