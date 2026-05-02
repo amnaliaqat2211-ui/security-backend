@@ -190,7 +190,7 @@ def register(data: RegisterRequest):
         "username": data.username,
         "email": data.email,
         "password": hashed,
-        "contacts": data.contacts,
+        "contacts": [contact.dict() for contact in data.contacts],
         "sos_message": data.sos_message
     })
 
@@ -262,9 +262,9 @@ def send_sos(data: SOSRequest):
 
     # 🔥 GET USER CONTACTS FROM DATABASE
     user_data = users_collection.find_one({"email": data.email})
-    contacts = user_data.get("contacts", [])
     if not user_data:
-     return {"contacts": []}
+     return {"error":"User not founf"}
+    contacts = user_data.get("contacts", [])
 
     # ✅ SAVE SOS HISTORY
     sos_collection.insert_one({
