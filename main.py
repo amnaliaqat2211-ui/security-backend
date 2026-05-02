@@ -64,13 +64,15 @@ def hash_password(password):
 def verify_password(plain, hashed):
     return pwd_context.verify(plain, hashed)
 # ===================== MODELS =====================
+class Contact(BaseModel):
+    name: str
+    phone:str
 class RegisterRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=20)
     email: EmailStr
     password: str = Field(..., min_length=6)
     contacts: List[Contact]
     sos_message: str = "Help me!"
-
 class LoginRequest(BaseModel):
     email: str
     password: str
@@ -79,9 +81,7 @@ class UpdateProfileRequest(BaseModel):
     email: str
     username: str
 
-class Contact(BaseModel):
-    name: str
-    phone:str
+
 class DeleteContact(BaseModel):
     phone: str
 class UpdateContact(BaseModel):
