@@ -15,6 +15,15 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 SECRET_KEY = os.getenv("SECRET_KEY")
+security = HTTPBearer()
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        return payload
+    except:
+        raise HTTPException(status_code=401, detail="Invalid token")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 # ✅ ADD FUNCTION HERE
@@ -77,9 +86,10 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
-class UpdateProfileRequest(BaseModel):
+class UpdateProfile(BaseModel):
     email: str
     username: str
+    phone: str
 
 
 class DeleteContact(BaseModel):
@@ -240,17 +250,18 @@ def login(data: LoginRequest):
 # ===================== UPDATE PROFILE =====================
 
 @app.post("/update-profile")
-def update_profile(data: UpdateProfileRequest):
+async def update_profile(data: UpdateProfile, current_user: dict = Depends(get_current_user)):
 
-    result = users_collection.update_one(
-        {"email": data.email},
-        {"$set": {"username": data.username}}
+    users_collection.update_one(
+        {"email": current_user["email"]},
+        {"$set": {
+            "username": data.username,
+            "email": data.email,
+            "phone": data.phone
+        }}
     )
 
-    if result.modified_count > 0:
-        return {"message": "Profile updated"}
-    else:
-        return {"message": "User not found"}
+    return {"message": "Profile updated"}
 
 
 # ===================== UPDATE SOS =====================
