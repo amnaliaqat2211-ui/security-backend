@@ -287,6 +287,7 @@ def update_profile(data: UpdateProfile, current_user: dict = Depends(get_current
         "email": updated_user["email"],
         "phone": updated_user.get("phone", "")
     }
+app.include_router(router)
 
 
 # ===================== UPDATE SOS =====================
