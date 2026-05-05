@@ -15,15 +15,28 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 SECRET_KEY = os.getenv("SECRET_KEY")
+from fastapi import APIRouter
+router = APIRouter()
 security = HTTPBearer()
+from bson import ObjectId
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        return payload
-    except:
+
+        user = rs_collection.find_one({
+            "email": payload["email"]
+        })
+
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        return user   # ✅ REAL USER FROM DB
+
+    except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 # ✅ ADD FUNCTION HERE
@@ -62,6 +75,7 @@ if not db_url:
     raise Exception("❌ DATABASE_URL NOT FOUND")
 client = MongoClient(db_url)
 db = client["security_app"]
+rs_collection = db["users"]
 users_collection = db["users"]
 sos_collection = db["sos_history"]
 # ===================== SECURITY =====================
@@ -249,11 +263,11 @@ def login(data: LoginRequest):
 
 # ===================== UPDATE PROFILE =====================
 
-@app.post("/update-profile")
-async def update_profile(data: UpdateProfile, current_user: dict = Depends(get_current_user)):
+@router.post("/update-profile")
+def update_profile(data: UpdateProfile, current_user: dict = Depends(get_current_user)):
 
-    users_collection.update_one(
-        {"email": current_user["email"]},
+    result = rs_collection.update_one(
+        {"_id": current_user["_id"]},   # 🔥 USE ID ONLY
         {"$set": {
             "username": data.username,
             "email": data.email,
@@ -261,7 +275,18 @@ async def update_profile(data: UpdateProfile, current_user: dict = Depends(get_c
         }}
     )
 
-    return {"message": "Profile updated"}
+    # 🔥 CHECK IF UPDATE HAPPENED
+    if result.modified_count == 0:
+        return {"error": "Update failed or no changes made"}
+
+    # 🔥 RETURN UPDATED DATA
+    updated_user = rs_collection.find_one({"_id": current_user["_id"]})
+
+    return {
+        "username": updated_user["username"],
+        "email": updated_user["email"],
+        "phone": updated_user.get("phone", "")
+    }
 
 
 # ===================== UPDATE SOS =====================
