@@ -715,14 +715,6 @@ async def speech_to_text(file: UploadFile = File(...)):
     }
 security = HTTPBearer()
 
-# 🔐 Decode token
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    try:
-        token = credentials.credentials
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
-    except:
-        raise HTTPException(status_code=401, detail="Invalid token")
 
 
 # ✅ PROFILE API
@@ -730,7 +722,8 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 def get_profile(user=Depends(get_current_user)):
     return {
         "username": user.get("username"),
-        "email": user.get("email")
+        "email": user.get("email"),
+        "phone": user.get("phone", "")
     }
 @app.post("/add-contact")
 def add_contact(contact: Contact, user=Depends(get_current_user)):
