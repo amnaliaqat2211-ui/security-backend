@@ -807,3 +807,18 @@ def admin_dashboard():
         "reports": total_logs,
         "recent_logs": formatted_logs
     }
+@app.get("/unsafe-area-content")
+def unsafe_area_content():
+    return {
+        "status": "success",
+        "areas": [
+            {
+                "name": "Dark Street",
+                "risk": "High"
+            },
+            {
+                "name": "City Center",
+                "risk": "Medium"
+            }
+        ]
+    }
