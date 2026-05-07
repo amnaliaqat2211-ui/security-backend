@@ -78,6 +78,14 @@ db = client["security_app"]
 rs_collection = db["users"]
 users_collection = db["users"]
 sos_collection = db["sos_history"]
+admin_logs = db["admin_logs"]
+def add_log(username, action, log_type):
+    admin_logs.insert_one({
+        "username": username,
+        "action": action,
+        "type": log_type,
+        "time": datetime.now()
+    })
 # ===================== SECURITY =====================
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -278,6 +286,7 @@ def update_profile(data: UpdateProfile, current_user: dict = Depends(get_current
     # 🔥 CHECK IF UPDATE HAPPENED
     if result.modified_count == 0:
         return {"error": "Update failed or no changes made"}
+    add_log(data.username, "Updated profile", "Update")
 
     # 🔥 RETURN UPDATED DATA
     updated_user = rs_collection.find_one({"_id": current_user["_id"]})
@@ -286,6 +295,7 @@ def update_profile(data: UpdateProfile, current_user: dict = Depends(get_current
         "username": updated_user["username"],
         "email": updated_user["email"],
         "phone": updated_user.get("phone", "")
+        
     }
 app.include_router(router)
 
@@ -339,6 +349,7 @@ Message:
             print(f"SMS sent to {number}")
         except Exception as e:
             print(f"Failed for {number}: {e}")
+            add_log(data.email, "SOS alert triggered", "SOS")
 
     return {"status": "SOS sent to all contacts"}
         
@@ -494,8 +505,10 @@ async def chat(req: ChatRequest):
     # ================== 1. ANALYSIS ==================
     level, reasons, score = analyze_message(message)
     confidence = get_confidence(score)
+    
 
     if level == "HIGH":
+        add_log("User", "Detected malicious phishing content", "Phishing")
         return {
             "reply": (
                 "🚨 HIGH RISK DETECTED\n\n"
@@ -504,8 +517,10 @@ async def chat(req: ChatRequest):
                 "⚠️ Do NOT share personal information!"
             )
         }
-
+    
     elif level == "MEDIUM":
+        add_log("User", "Detected suspicious content", "Phishing")
+    
         return {
             "reply": (
                 "⚠️ SUSPICIOUS MESSAGE\n\n"
@@ -762,3 +777,33 @@ def update_contact(data: UpdateContact, user=Depends(get_current_user)):
         }
     )
     return {"message": "Updated"}
+@app.get("/admin-dashboard")
+def admin_dashboard():
+
+    total_logs = admin_logs.count_documents({})
+    total_sos = sos_collection.count_documents({})
+
+    phishing_count = admin_logs.count_documents({
+        "type": "Phishing"
+    })
+
+    recent_logs = list(
+        admin_logs.find().sort("time", -1).limit(10)
+    )
+
+    formatted_logs = []
+
+    for log in recent_logs:
+        formatted_logs.append({
+            "username": log.get("username", "User"),
+            "action": log.get("action", ""),
+            "type": log.get("type", ""),
+            "time": log.get("time").strftime("%I:%M %p")
+        })
+
+    return {
+        "total_logs": total_logs,
+        "security_events": phishing_count + total_sos,
+        "reports": total_logs,
+        "recent_logs": formatted_logs
+    }
