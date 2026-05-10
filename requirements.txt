@@ -9,3 +9,4 @@ passlib[bcrypt]==1.7.4
 pymongo
 python-jose[cryptography]
 pydantic[email]
+google-cloud-speech

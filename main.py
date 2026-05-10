@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
 import os
+from google.cloud import speech
+import json
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field
 from fastapi import FastAPI,UploadFile,File
@@ -14,6 +16,13 @@ from typing import List
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
+google_creds = os.getenv("GOOGLE_CREDENTIALS")
+
+if google_creds:
+    with open("google_temp.json", "w") as f:
+        f.write(google_creds)
+
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google_temp.json"
 SECRET_KEY = os.getenv("SECRET_KEY")
 from fastapi import APIRouter
 router = APIRouter()
@@ -821,4 +830,32 @@ def unsafe_area_content():
                 "risk": "Medium"
             }
         ]
+    }
+@app.post("/speech-to-text")
+async def speech_to_text(audio: UploadFile = File(...)):
+
+    client = speech.SpeechClient()
+
+    audio_bytes = await audio.read()
+
+    recognition_audio = speech.RecognitionAudio(content=audio_bytes)
+
+    config = speech.RecognitionConfig(
+        encoding=speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,
+        sample_rate_hertz=48000,
+        language_code="en-US"
+    )
+
+    response = client.recognize(
+        config=config,
+        audio=recognition_audio
+    )
+
+    transcript = ""
+
+    for result in response.results:
+        transcript += result.alternatives[0].transcript + " "
+
+    return {
+        "text": transcript
     }
