@@ -848,7 +848,6 @@ async def speech_to_text(file: UploadFile = File(...)):
 
     config = speech.RecognitionConfig(
         encoding=speech.RecognitionConfig.AudioEncoding.ENCODING_UNSPECIFIED,
-        sample_rate_hertz=48000,
         language_code="en-US",
     )
 
@@ -862,5 +861,9 @@ async def speech_to_text(file: UploadFile = File(...)):
     for result in response.results:
         text += result.alternatives[0].transcript
 
-    return {"text": text}
+    return {
+        "text": text
+    }
+
+   
    
