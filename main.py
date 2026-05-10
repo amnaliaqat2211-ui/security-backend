@@ -831,39 +831,36 @@ def unsafe_area_content():
             }
         ]
     }
-@app.post("/speech-to-text")
-async def speech_to_text(audio: UploadFile = File(...)):
-    try:
-        audio_bytes = await audio.read()
+@app.post("/speech_to_text")
+async def speech_to_text(file: UploadFile = File(...)):
 
-        client = speech.SpeechClient()
+    temp_audio = "temp_audio.wav"
 
-        audio_config = speech.RecognitionAudio(content=audio_bytes)
+    with open(temp_audio, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
 
-        config = speech.RecognitionConfig(
-            encoding=speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,
-            sample_rate_hertz=48000,
-            language_code="en-US",
-        )
+    client = speech.SpeechClient()
 
-        response = client.recognize(
-            config=config,
-            audio=audio_config
-        )
+    with open(temp_audio, "rb") as audio_file:
+        content = audio_file.read()
 
-        transcript = ""
+    audio = speech.RecognitionAudio(content=content)
 
-        for result in response.results:
-            transcript += result.alternatives[0].transcript
+    config = speech.RecognitionConfig(
+        encoding=speech.RecognitionConfig.AudioEncoding.ENCODING_UNSPECIFIED,
+        sample_rate_hertz=48000,
+        language_code="en-US",
+    )
 
-        return {
-            "success": True,
-            "text": transcript
-        }
+    response = client.recognize(
+        config=config,
+        audio=audio
+    )
 
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
+    text = ""
+
+    for result in response.results:
+        text += result.alternatives[0].transcript
+
+    return {"text": text}
    
