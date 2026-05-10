@@ -834,7 +834,7 @@ def unsafe_area_content():
 @app.post("/speech_to_text")
 async def speech_to_text(file: UploadFile = File(...)):
 
-    temp_audio = "temp_audio.wav"
+    temp_audio = "temp_audio.m4a"
 
     with open(temp_audio, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
