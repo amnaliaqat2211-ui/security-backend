@@ -833,29 +833,37 @@ def unsafe_area_content():
     }
 @app.post("/speech-to-text")
 async def speech_to_text(audio: UploadFile = File(...)):
+    try:
+        audio_bytes = await audio.read()
 
-    client = speech.SpeechClient()
+        client = speech.SpeechClient()
 
-    audio_bytes = await audio.read()
+        audio_config = speech.RecognitionAudio(content=audio_bytes)
 
-    recognition_audio = speech.RecognitionAudio(content=audio_bytes)
+        config = speech.RecognitionConfig(
+            encoding=speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,
+            sample_rate_hertz=48000,
+            language_code="en-US",
+        )
 
-    config = speech.RecognitionConfig(
-        encoding=speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,
-        sample_rate_hertz=48000,
-        language_code="en-US"
-    )
+        response = client.recognize(
+            config=config,
+            audio=audio_config
+        )
 
-    response = client.recognize(
-        config=config,
-        audio=recognition_audio
-    )
+        transcript = ""
 
-    transcript = ""
+        for result in response.results:
+            transcript += result.alternatives[0].transcript
 
-    for result in response.results:
-        transcript += result.alternatives[0].transcript + " "
+        return {
+            "success": True,
+            "text": transcript
+        }
 
-    return {
-        "text": transcript
-    }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+   
