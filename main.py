@@ -834,7 +834,7 @@ def unsafe_area_content():
 @app.post("/speech_to_text")
 async def speech_to_text(file: UploadFile = File(...)):
 
-    temp_audio = "temp_audio.m4a"
+    temp_audio = "temp_audio.mp3"
 
     with open(temp_audio, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
@@ -847,7 +847,7 @@ async def speech_to_text(file: UploadFile = File(...)):
     audio = speech.RecognitionAudio(content=content)
 
     config = speech.RecognitionConfig(
-        encoding=speech.RecognitionConfig.AudioEncoding.ENCODING_UNSPECIFIED,
+        encoding=speech.RecognitionConfig.AudioEncoding.MP3,
         language_code="en-US",
     )
 
