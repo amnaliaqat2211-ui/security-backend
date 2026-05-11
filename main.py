@@ -848,6 +848,7 @@ async def speech_to_text(file: UploadFile = File(...)):
 
     config = speech.RecognitionConfig(
         encoding=speech.RecognitionConfig.AudioEncoding.MP3,
+        sample_rate_hertz=44100,
         language_code="en-US",
     )
 
