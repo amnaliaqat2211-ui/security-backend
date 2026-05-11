@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
+import speech_recognition as sr
+from pydub import AudioSegment
 import os
 from google.cloud import speech
 import json
@@ -865,6 +867,52 @@ async def speech_to_text(file: UploadFile = File(...)):
     return {
         "text": text
     }
+@app.post("/voice-trigger")
+async def voice_trigger(audio: UploadFile = File(...)):
+
+    try:
+
+        temp_audio = f"temp_{audio.filename}"
+
+        with open(temp_audio, "wb") as buffer:
+            buffer.write(await audio.read())
+
+        wav_audio = "converted.wav"
+
+        sound = AudioSegment.from_file(temp_audio)
+
+        sound.export(
+            wav_audio,
+            format="wav"
+        )
+
+        recognizer = sr.Recognizer()
+
+        with sr.AudioFile(wav_audio) as source:
+
+            audio_data = recognizer.record(source)
+
+            text = recognizer.recognize_google(
+                audio_data
+            )
+
+        os.remove(temp_audio)
+        os.remove(wav_audio)
+
+        return {
+            "success": True,
+            "text": text
+        }
+
+    except Exception as e:
+
+        print(e)
+
+        return {
+            "success": False,
+            "text": "",
+            "error": str(e)
+        }
 
    
    
