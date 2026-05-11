@@ -10,3 +10,7 @@ pymongo
 python-jose[cryptography]
 pydantic[email]
 google-cloud-speech
+SpeechRecognition
+pydub
+python-multipart
+ffmpeg-python
